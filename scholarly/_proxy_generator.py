@@ -147,7 +147,14 @@ class ProxyGenerator(object):
             return False
 
     def _setup_file_logger(self):
-        """Setup file handler for logging to a specific file."""
+        """Setup file handler for logging to a specific file.
+        Only enables file logging when global logging level is DEBUG.
+        """
+        # Only setup file handler if global logging level is DEBUG
+        root_logger = logging.getLogger()
+        if root_logger.level != logging.DEBUG and self.logger.level != logging.DEBUG:
+            return  # Not in debug mode, skip file logging
+        
         log_file = '.scholarly_debug.log'
 
         # Check if file handler already exists
@@ -168,7 +175,6 @@ class ProxyGenerator(object):
 
         # Add handler to logger
         self.logger.addHandler(file_handler)
-        self.logger.setLevel(logging.DEBUG)
 
         self.logger.info(
             f"=== Scholarly session started, logging to {log_file} ===")
