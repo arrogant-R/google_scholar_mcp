@@ -31,6 +31,8 @@ async def search_google_scholar(
     """
     Search for articles on Google Scholar.
     Supports keyword search, author filtering, and year range filtering.
+    
+    Note: Providing the exact title and author name allows access to the complete abstract.
 
     Args:
         query: Search query string (paper title, topic, or keywords)

@@ -95,3 +95,5 @@ test*
 
 # Backup files
 *.backup
+
+uv.lock
