@@ -244,8 +244,6 @@ class PublicationParser(object):
             publication['bib']['abstract'] = databox.find('div', class_='gs_rs').text
         if __data.find('div', class_='gs_fma_snp'):
             publication['bib']['abstract'] = databox.find('div', class_='gs_fma_snp').text
-        else:
-            print("No abstract found in snippet")
         publication['bib']['abstract'] = publication['bib']['abstract'].replace(u'\u2026', u'')
         publication['bib']['abstract'] = publication['bib']['abstract'].replace(u'\n', u' ')
         publication['bib']['abstract'] = publication['bib']['abstract'].strip()
