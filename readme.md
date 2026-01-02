@@ -45,7 +45,9 @@ Google Scholar MCP Server 是一个基于 Model Context Protocol (MCP) 的服务
   "eprint_url": "PDF 链接"
 }
 ```
-### 使用示例
+### 📚 使用示例
+
+#### 🤖 mcp客户端调用
 
 **关键词搜索：**
 
@@ -88,10 +90,22 @@ result = await mcp.use_tool("search_google_scholar", {
     "num_results": 10
 })
 ```
+#### 🐍 作为 Python 包直接调用
+
+你可以直接在 Python/Jupyter 中导入并调用：
+
+```python
+from google_scholar_mcp import search_google_scholar
+results = search_google_scholar("attention is all you need", 
+                                  author="Vaswani",
+                                  year_low=2017, 
+                                  year_high=2018, 
+                                  num_results=2  )
+print(results)
+```
 ## 🚀 快速开始
 
-### 方式一：从 PyPI 安装（Coming Soon）
-
+### 方式一：从 PyPI 安装
 ```bash
 uv tool install google_scholar_mcp
 ```
@@ -102,7 +116,7 @@ uv tool install google_scholar_mcp
 uv tool install git+https://github.com/arrogant-R/google_scholar_mcp.git
 ```
 
-### 方式三：本地安装
+### 方式三：本地安装 + 开发模式
 
 1. 克隆仓库：
 
@@ -123,16 +137,31 @@ uv pip install -e .
 pip install -r requirements.txt
 ```
 
-3. 启动服务：
+
+
+### 方式四：本地直接安装
+```bash
+# pip 直接安装
+pip install google_scholar_mcp
+
+# 或
+uv add google_scholar_mcp
+```
+
+启动服务：(方式3/4)
 
 ```bash
 # 作为模块运行
 python -m google_scholar_mcp
+
+# 直接运行
+google-scholar-mcp
 ```
+
 
 ## ⚙️ 配置 MCP 客户端
 
-### 方式一：使用 uv（从 GitHub 安装后）
+### 方式一：使用 uv（从 uv tool 安装后）
 
 ```json
 {
@@ -173,9 +202,10 @@ python -m google_scholar_mcp
 {
   "mcpServers": {
     "google-scholar": {
-      "command": "/path/to/python",
+      "command": "/path/to/python", // 替换为你的安装环境下的Python解释器
       "args": [
-        "/path/to/Google-Scholar-MCP-Server/google_scholar_server.py"
+        "-m",
+        "google_scholar_mcp"
       ]
     }
   }
@@ -205,21 +235,6 @@ python -m google_scholar_mcp
 }
 ```
 
-**使用本地 Python：**
-
-```json
-{
-  "servers": {
-    "google_scholar": {
-      "type": "stdio",
-      "command": "D:/path/to/python.exe",
-      "args": [
-        "D:/path/to/Google-Scholar-MCP-Server/google_scholar_server.py"
-      ]
-    }
-  }
-}
-```
 
 ### Claude Desktop
 
@@ -263,7 +278,8 @@ python -m google_scholar_mcp
     "google-scholar": {
       "command": "C:\\Users\\YOUR\\PATH\\python.exe",
       "args": [
-        "D:\\path\\to\\Google-Scholar-MCP-Server\\google_scholar_server.py"
+        "-m",
+        "google_scholar_mcp"
       ]
     }
   }
@@ -323,7 +339,7 @@ python -m google_scholar_mcp
 
 ### 📄 完整摘要获取
 
-当进行精确搜索（`num_results=1`）时，系统会自动获取论文的完整 abstract，而不仅仅是截断的摘要片段。这对于需要详细了解单篇论文内容的场景非常有用。
+当进行query比较完整且精确时，系统会自动获取论文的完整 abstract，而不仅仅是截断的摘要片段。这对于需要详细了解单篇论文内容的场景非常有用。
 
 ## 📁 项目结构
 

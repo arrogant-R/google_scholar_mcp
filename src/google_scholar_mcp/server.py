@@ -12,8 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from .search import search_google_scholar as _search_google_scholar
 
 # Set up logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("google-scholar-mcp-server")
 
 # Initialize FastMCP server for Google Scholar

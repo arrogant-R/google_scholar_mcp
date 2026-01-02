@@ -3,6 +3,7 @@ Google Scholar MCP Server initialization
 """
 
 from .server import mcp
+from .search import search_google_scholar
 import asyncio
 
 

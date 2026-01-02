@@ -35,6 +35,7 @@ class Navigator(object, metaclass=Singleton):
     def __init__(self):
         super(Navigator, self).__init__()
         self.logger = logging.getLogger('scholarly')
+        self.logger.setLevel(logging.CRITICAL)  
         self._TIMEOUT = 5
         self._max_retries = 5
         # A Navigator instance has two proxy managers, each with their session.
@@ -46,11 +47,9 @@ class Navigator(object, metaclass=Singleton):
         self._session2 = self.pm2.get_session()
         self.got_403 = False
 
-
     def set_logger(self, enable: bool):
         """Enable or disable the logger for google scholar."""
-
-        self.logger.setLevel((logging.INFO if enable else logging.CRITICAL))
+        self.logger.setLevel(logging.INFO if enable else logging.CRITICAL)
 
     def set_timeout(self, timeout: int):
         """Set timeout period in seconds for scholarly"""
@@ -81,7 +80,6 @@ class Navigator(object, metaclass=Singleton):
         else:
             self._session2 = self.pm2._new_session(**kwargs)
 
-
     def _get_page(self, pagerequest: str, premium: bool = False) -> str:
         """Return the data from a webpage
 
@@ -106,14 +104,15 @@ class Navigator(object, metaclass=Singleton):
             premium = True
         if pm.proxy_mode is ProxyMode.SCRAPERAPI:
             self.set_timeout(60)
-        timeout=self._TIMEOUT
+        timeout = self._TIMEOUT
         while tries < self._max_retries:
             try:
-                w = random.uniform(1,2)
+                w = random.uniform(1, 2)
                 time.sleep(w)
                 resp = session.get(pagerequest, timeout=timeout)
                 if premium is False:  # premium methods may contain sensitive information
-                    self.logger.debug("Session proxy config is {}".format(pm._proxies))
+                    self.logger.debug(
+                        "Session proxy config is {}".format(pm._proxies))
 
                 has_captcha = self._requests_has_captcha(resp.text)
 
@@ -124,7 +123,8 @@ class Navigator(object, metaclass=Singleton):
                     # 404 (or 302), and then gets redirected to the correct profile.
                     # In such cases, we need to try again with the same session.
                     # See https://github.com/scholarly-python-package/scholarly/issues/469.
-                    self.logger.debug("Got a 404 error. Attempting with same proxy")
+                    self.logger.debug(
+                        "Got a 404 error. Attempting with same proxy")
                     tries += 1
                     continue
                 elif has_captcha:
@@ -136,18 +136,21 @@ class Navigator(object, metaclass=Singleton):
                     if not pm.has_proxy():
                         self.logger.info("No other connections possible.")
                         if not self.got_403:
-                            self.logger.info("Retrying immediately with another session.")
+                            self.logger.info(
+                                "Retrying immediately with another session.")
                         else:
                             if pm.proxy_mode not in (ProxyMode.LUMINATI, ProxyMode.SCRAPERAPI):
                                 w = random.uniform(60, 2*60)
-                                self.logger.info("Will retry after %.2f seconds (with another session).", w)
+                                self.logger.info(
+                                    "Will retry after %.2f seconds (with another session).", w)
                                 time.sleep(w)
                         self._new_session(premium=premium)
                         self.got_403 = True
 
-                        continue # Retry request within same session
+                        continue  # Retry request within same session
                     else:
-                        self.logger.info("We can use another connection... let's try that.")
+                        self.logger.info(
+                            "We can use another connection... let's try that.")
                 elif resp.status_code == 302 and resp.has_redirect_location:
                     self.logger.debug("Got a redirect.")
                     pagerequest = resp.headers["location"]
@@ -159,25 +162,30 @@ class Navigator(object, metaclass=Singleton):
                 if not pm.has_proxy():
                     self.logger.info("No other connections possible.")
                     w = random.uniform(60, 2*60)
-                    self.logger.info("Will retry after %.2f seconds (with the same session).", w)
+                    self.logger.info(
+                        "Will retry after %.2f seconds (with the same session).", w)
                     time.sleep(w)
                     continue
             except (Timeout, TimeoutException) as e:
-                err = "Timeout Exception %s while fetching page: %s" % (type(e).__name__, e.args)
+                err = "Timeout Exception %s while fetching page: %s" % (
+                    type(e).__name__, e.args)
                 self.logger.info(err)
                 if timeout < 3*self._TIMEOUT:
-                    self.logger.info("Increasing timeout and retrying within same session.")
+                    self.logger.info(
+                        "Increasing timeout and retrying within same session.")
                     timeout = timeout + self._TIMEOUT
                     continue
                 self.logger.info("Giving up this session.")
             except Exception as e:
-                err = "Exception %s while fetching page: %s" % (type(e).__name__, e.args)
+                err = "Exception %s while fetching page: %s" % (
+                    type(e).__name__, e.args)
                 self.logger.info(err)
                 self.logger.info("Retrying with a new session.")
 
             tries += 1
             try:
-                session, timeout = pm.get_next_proxy(num_tries = tries, old_timeout = timeout, old_proxy=pm._proxies.get('http', None))
+                session, timeout = pm.get_next_proxy(
+                    num_tries=tries, old_timeout=timeout, old_proxy=pm._proxies.get('http', None))
             except Exception:
                 self.logger.info("No other secondary connections possible. "
                                  "Using the primary proxy for all requests.")
@@ -187,14 +195,13 @@ class Navigator(object, metaclass=Singleton):
         if not premium:
             return self._get_page(pagerequest, True)
         else:
-            raise MaxTriesExceededException("Cannot Fetch from Google Scholar.")
-
+            raise MaxTriesExceededException(
+                "Cannot Fetch from Google Scholar.")
 
     def _set_retries(self, num_retries: int) -> None:
         if (num_retries < 0):
             raise ValueError("num_retries must not be negative")
         self._max_retries = num_retries
-
 
     def _requests_has_captcha(self, text) -> bool:
         """Tests whether some html text contains a captcha.
@@ -205,8 +212,8 @@ class Navigator(object, metaclass=Singleton):
         :rtype: {bool}
         """
         return self._has_captcha(
-            lambda i : f'id="{i}"' in text,
-            lambda c : f'class="{c}"' in text,
+            lambda i: f'id="{i}"' in text,
+            lambda c: f'class="{c}"' in text,
         )
 
     def _webdriver_has_captcha(self, premium=True) -> bool:
@@ -217,15 +224,16 @@ class Navigator(object, metaclass=Singleton):
         """
         pm = self.pm1 if premium else self.pm2
         return self._has_captcha(
-            lambda i : len(pm._get_webdriver().find_elements(By.ID, i)) > 0,
-            lambda c : len(pm._get_webdriver().find_elements(By.CLASS_NAME, c)) > 0,
+            lambda i: len(pm._get_webdriver().find_elements(By.ID, i)) > 0,
+            lambda c: len(pm._get_webdriver().find_elements(
+                By.CLASS_NAME, c)) > 0,
         )
 
     def _has_captcha(self, got_id, got_class) -> bool:
         _CAPTCHA_IDS = [
-            "gs_captcha_ccl", # the normal captcha div
-            "recaptcha", # the form used on full-page captchas
-            "captcha-form", # another form used on full-page captchas
+            "gs_captcha_ccl",  # the normal captcha div
+            "recaptcha",  # the form used on full-page captchas
+            "captcha-form",  # another form used on full-page captchas
         ]
         _DOS_CLASSES = [
             "rc-doscaptcha-body",
@@ -245,7 +253,7 @@ class Navigator(object, metaclass=Singleton):
             pass
         return res
 
-    def search_authors(self, url: str)->Author:
+    def search_authors(self, url: str) -> Author:
         """Generator that returns Author objects from the author search page"""
         soup = self._get_soup(url)
 
@@ -280,7 +288,8 @@ class Navigator(object, metaclass=Singleton):
         """
         soup = self._get_soup(url)
         publication_parser = PublicationParser(self)
-        pub = publication_parser.get_publication(soup.find_all('div', 'gs_or')[0], PublicationSource.PUBLICATION_SEARCH_SNIPPET)
+        pub = publication_parser.get_publication(soup.find_all(
+            'div', 'gs_or')[0], PublicationSource.PUBLICATION_SEARCH_SNIPPET)
         if filled:
             pub = publication_parser.fill(pub)
         return pub
@@ -311,9 +320,11 @@ class Navigator(object, metaclass=Singleton):
         author_parser = AuthorParser(self)
         res = author_parser.get_author(id)
         if filled:
-            res = author_parser.fill(res, sortby=sortby, publication_limit=publication_limit)
+            res = author_parser.fill(
+                res, sortby=sortby, publication_limit=publication_limit)
         else:
-            res = author_parser.fill(res, sections=['basics'], sortby=sortby, publication_limit=publication_limit)
+            res = author_parser.fill(
+                res, sections=['basics'], sortby=sortby, publication_limit=publication_limit)
         return res
 
     def search_organization(self, url: str, fromauthor: bool) -> list:
@@ -328,7 +339,8 @@ class Navigator(object, metaclass=Singleton):
 
         res = []
         for row in rows:
-            res.append({'Organization': row.a.text, 'id': row.a['href'].split('org=', 1)[1]})
+            res.append({'Organization': row.a.text,
+                       'id': row.a['href'].split('org=', 1)[1]})
 
         if rows == [] and fromauthor is True:
             try:
