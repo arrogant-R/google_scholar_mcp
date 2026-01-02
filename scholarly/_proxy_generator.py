@@ -8,6 +8,9 @@ import requests
 import httpx
 import tempfile
 import urllib3
+import json
+import os
+from pathlib import Path
 
 from selenium import webdriver
 from selenium.webdriver.support.wait import WebDriverWait, TimeoutException
@@ -44,6 +47,7 @@ class ProxyGenerator(object):
     def __init__(self):
         # setting up logger
         self.logger = logging.getLogger('scholarly')
+        self._setup_file_logger()
 
         self._proxy_gen = None
         # If we use a proxy or Tor, we set this to True
@@ -58,7 +62,11 @@ class ProxyGenerator(object):
         self._session = None
         self._webdriver = None
         self._TIMEOUT = 5
+        # Cookie persistence
+        self._cookie_file = Path.home() / '.scholarly_cookies.json'
         self._new_session()
+        # Try to load saved cookies
+        self._load_cookies()
 
     def __del__(self):
         if self._tor_process:
@@ -68,6 +76,113 @@ class ProxyGenerator(object):
 
     def get_session(self):
         return self._session
+
+    def _save_cookies(self):
+        """Save cookies to file for persistence across sessions."""
+        try:
+            cookies_list = []
+            # Use jar property to handle duplicate cookie names
+            # httpx cookies.items() fails with duplicate names
+            for cookie in self._session.cookies.jar:
+                cookies_list.append({
+                    'name': cookie.name,
+                    'value': cookie.value,
+                    'domain': cookie.domain,
+                    'path': cookie.path
+                })
+
+            with open(self._cookie_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'cookies': cookies_list,
+                    'timestamp': time.time()
+                }, f, indent=2)
+            self.logger.info(
+                f"Cookies saved to {self._cookie_file} ({len(cookies_list)} cookies)")
+        except Exception as e:
+            self.logger.warning(f"Failed to save cookies: {e}")
+
+    def _load_cookies(self):
+        """Load cookies from file if they exist and are not expired."""
+        try:
+            if not self._cookie_file.exists():
+                self.logger.debug("No saved cookies found.")
+                return False
+
+            with open(self._cookie_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Check if cookies are older than 7 days
+            cookie_age = time.time() - data.get('timestamp', 0)
+            max_age = 7 * 24 * 60 * 60  # 7 days in seconds
+
+            if cookie_age > max_age:
+                self.logger.info(
+                    "Saved cookies expired. Will need fresh authentication.")
+                self._cookie_file.unlink()  # Delete expired cookies
+                return False
+
+            cookies = data.get('cookies', [])
+
+            # Handle both old format (dict) and new format (list)
+            if isinstance(cookies, dict):
+                # Old format: {'name': 'value', ...}
+                for name, value in cookies.items():
+                    self._session.cookies.set(
+                        name, value, domain='.google.com')
+            else:
+                # New format: [{'name': ..., 'value': ..., 'domain': ...}, ...]
+                for cookie in cookies:
+                    self._session.cookies.set(
+                        cookie['name'],
+                        cookie['value'],
+                        domain=cookie.get('domain', '.google.com'),
+                        path=cookie.get('path', '/')
+                    )
+
+            self.logger.info(
+                f"Loaded {len(cookies)} cookies from {self._cookie_file} (age: {cookie_age/3600:.1f} hours)")
+            return True
+        except Exception as e:
+            self.logger.warning(f"Failed to load cookies: {e}")
+            return False
+
+    def _setup_file_logger(self):
+        """Setup file handler for logging to a specific file."""
+        log_file = '.scholarly_debug.log'
+
+        # Check if file handler already exists
+        for handler in self.logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                return  # Already setup
+
+        # Create file handler
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+
+        # Create formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(formatter)
+
+        # Add handler to logger
+        self.logger.addHandler(file_handler)
+        self.logger.setLevel(logging.DEBUG)
+
+        self.logger.info(
+            f"=== Scholarly session started, logging to {log_file} ===")
+
+    def clear_cookies(self):
+        """Clear saved cookies file. Call this if you need to re-authenticate."""
+        try:
+            if self._cookie_file.exists():
+                self._cookie_file.unlink()
+                self.logger.info("Saved cookies cleared.")
+            # Also clear session cookies
+            self._session.cookies.clear()
+        except Exception as e:
+            self.logger.warning(f"Failed to clear cookies: {e}")
 
     def Luminati(self, usr, passwd, proxy_port):
         """ Setups a luminati proxy without refreshing capabilities.
@@ -466,7 +581,15 @@ class ProxyGenerator(object):
 
             # 同步 cookies 并返回
             for cookie in self._get_webdriver().get_cookies():
-                self._session.cookies.set(cookie['name'], cookie['value'])
+                self._session.cookies.set(
+                    cookie['name'],
+                    cookie['value'],
+                    domain=cookie.get('domain', '.google.com'),
+                    path=cookie.get('path', '/')
+                )
+
+            # 保存 cookies 以便下次使用
+            self._save_cookies()
 
             self.logger.info("No captcha found. Returning session.")
             return self._session
@@ -510,8 +633,23 @@ class ProxyGenerator(object):
                 f"Could not solve captcha in time (within {timeout} s).")
         self.logger.info(f"Solved captcha in less than {cur} seconds.")
 
-        for cookie in self._get_webdriver().get_cookies():
-            self._session.cookies.set(cookie['name'], cookie['value'])
+        # 获取 WebDriver 的所有 cookies
+        webdriver_cookies = self._get_webdriver().get_cookies()
+        self.logger.info(
+            f"WebDriver returned {len(webdriver_cookies)} cookies")
+        for cookie in webdriver_cookies:
+            self.logger.debug(
+                f"Cookie from WebDriver: {cookie['name']} = {cookie['value'][:20]}... (domain: {cookie.get('domain', 'N/A')})")
+            # Set cookie with domain for proper routing
+            self._session.cookies.set(
+                cookie['name'],
+                cookie['value'],
+                domain=cookie.get('domain', '.google.com'),
+                path=cookie.get('path', '/')
+            )
+
+        # 保存 cookies 以便下次使用
+        self._save_cookies()
 
         return self._session
 
