@@ -1,5 +1,5 @@
 [project]
-name = "mcp-server-google-scholar"
+name = "google_scholar_mcp"
 version = "0.1.0"
 description = "An MCP server for searching and retrieving articles from Google Scholar"
 readme = "README.md"
