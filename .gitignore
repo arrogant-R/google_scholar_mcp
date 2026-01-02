@@ -92,3 +92,6 @@ test_*.py
 
 test*
 *.pyc
+
+# Backup files
+*.backup
