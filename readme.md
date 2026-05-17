@@ -298,12 +298,11 @@ Agent 会自动从仓库的 `skill/google-scholar-search/` 目录下载并安装
 Skill 依赖 `google-scholar` 命令，需要先安装：
 
 ```bash
-# Via uv (recommended)
+# Via uv (recommended — fast, no proxy issues)
 uv tool install google_scholar_mcp
-
-# Via pip
-pip install google_scholar_mcp
 ```
+
+> ⚠️ **Avoid `pip install`** — pip is slow and may fail behind proxies. Use `uv` instead.
 
 **Step 2：复制 Skill 文件**
 

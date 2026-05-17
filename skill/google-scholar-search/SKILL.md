@@ -36,18 +36,14 @@ google-scholar bibtex "attention is all you need"
 Install the `google-scholar-mcp` package (provides the `google-scholar` CLI):
 
 ```bash
-# Via uv (recommended)
+# Via uv (recommended — fast, no proxy issues)
 uv tool install google_scholar_mcp
 
-# Via pip
-pip install google_scholar_mcp
-```
-
-Or install from the GitHub repo:
-
-```bash
+# Or install from GitHub
 uv tool install git+https://github.com/arrogant-R/google_scholar_mcp.git
 ```
+
+> ⚠️ **Avoid `pip install`** — pip is slow and may fail behind proxies. Use `uv` instead.
 
 ## Commands
 
