@@ -293,8 +293,21 @@ Agent 会自动从仓库的 `skill/google-scholar-search/` 目录下载并安装
 
 #### 方式二：手动安装
 
-1. 将本仓库 `skill/google-scholar-search` 目录下载到本地
-2. 复制到 `~/.qclaw/skills/` 目录下：
+**Step 1：安装 CLI 工具**
+
+Skill 依赖 `google-scholar` 命令，需要先安装：
+
+```bash
+# Via uv (recommended)
+uv tool install google_scholar_mcp
+
+# Via pip
+pip install google_scholar_mcp
+```
+
+**Step 2：复制 Skill 文件**
+
+将本仓库 `skill/google-scholar-search` 目录复制到 `~/.qclaw/skills/`：
 
 ```powershell
 # Windows
